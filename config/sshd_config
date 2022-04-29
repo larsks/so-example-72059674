@@ -1,0 +1,3 @@
+StrictModes no
+AuthorizedKeysFile	/config/authorized_keys
+PidFile			/etc/ssh/sshd.pid

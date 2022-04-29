@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sshtest
+spec:
+  replicas: 1
+  template:
+    spec:
+      shareProcessNamespace: true
+      containers:
+        - image: docker.io/alpine:latest
+          name: reloader
+          volumeMounts:
+            - name: ssh-config
+              mountPath: /config
+            - name: ssh-data
+              mountPath: /etc/ssh
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                if [ -f /etc/ssh/sshd_config ] && [ -f /etc/ssh/sshd.pid ]; then
+                  if ! diff -q /config/sshd_config /etc/ssh/sshd_config; then
+                    cp /config/sshd_config /etc/ssh/sshd_config
+                    kill -HUP $(cat /etc/ssh/sshd.pid)
+                  fi
+                fi
+
+                sleep 10
+              done
+        - image: quay.io/larsks/alpine-sshd:6
+          imagePullPolicy: Always
+          name: sshd
+          ports:
+            - containerPort: 22
+              name: ssh
+          volumeMounts:
+            - name: ssh-config
+              mountPath: /config
+            - name: ssh-data
+              mountPath: /etc/ssh
+      volumes:
+        - name: ssh-config
+          configMap:
+            name: ssh-config
+            defaultMode: 0600
+        - name: ssh-data
+          emptyDir: {}
